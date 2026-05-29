@@ -8,8 +8,10 @@
     <title>Pack Your Bags Tours And Travels</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="tailwind-fallback.css">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Use local html2pdf bundle for offline / stable use -->
+    <script src="html2pdf.bundle.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
 
@@ -373,7 +375,31 @@
 
 <script>
 
+// invoiceCounter is the next numeric suffix for invoice numbering.
+// Prefer authoritative value from the DB when running inside Electron.
 let invoiceCounter = parseInt(localStorage.getItem('invoiceCounter')) || 407;
+let invoiceInitialized = false;
+
+async function initInvoiceCounter() {
+    if (invoiceInitialized) return;
+    invoiceInitialized = true;
+
+    try {
+        if (window.electronAPI && window.electronAPI.getNextInvoiceNumber) {
+            const next = await window.electronAPI.getNextInvoiceNumber();
+            if (next && Number.isInteger(next)) {
+                invoiceCounter = next;
+                localStorage.setItem('invoiceCounter', invoiceCounter);
+            }
+        }
+    }
+    catch (e) {
+        console.error('Could not initialize invoice counter from DB', e);
+    }
+}
+
+// initialize on load
+initInvoiceCounter();
 
 function addTourRow(date = '', amount = '') {
 
@@ -435,7 +461,9 @@ function togglePaymentOptions() {
     }
 }
 
-function generateInvoice() {
+async function generateInvoice(options = { save: true }) {
+
+    await initInvoiceCounter();
 
     const customerName = document.getElementById('customerName').value;
     const phone = document.getElementById('phone').value;
@@ -450,40 +478,61 @@ function generateInvoice() {
     const dates = document.querySelectorAll('.tour-date');
     const amounts = document.querySelectorAll('.tour-amount');
 
+    // Validation
+    const errors = [];
+    if (!customerName || customerName.trim().length < 2) errors.push('Customer name is required.');
+    const phoneDigits = (phone || '').replace(/[^0-9]/g, '');
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) errors.push('Please enter a valid phone number (7-15 digits).');
+
+    let hasValidTour = false;
+    for (let i = 0; i < amounts.length; i++) {
+        if ((parseFloat(amounts[i].value) || 0) > 0) { hasValidTour = true; break; }
+    }
+    if (!hasValidTour) errors.push('Add at least one tour with amount > 0.');
+    if (!packageName || packageName.trim().length < 2) errors.push('Package name is required.');
+
+    if (errors.length > 0) {
+        alert('Please fix the following:\n' + errors.join('\n'));
+        return null;
+    }
+
     let totalAmount = 0;
 
-    let tableHTML = `
+    function formatDateString(input) {
+        if (!input) return '';
+        input = input.trim();
+        if (/^\d{8}$/.test(input)) { return input.slice(0,2) + '/' + input.slice(2,4) + '/' + input.slice(4); }
+        if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(input)) {
+            const parts = input.split(/[\/\-]/); const d = parts[0].padStart(2,'0'); const m = parts[1].padStart(2,'0'); const y = parts[2].length===2?('20'+parts[2]):parts[2]; return `${d}/${m}/${y}`;
+        }
+        const p = Date.parse(input);
+        if (!isNaN(p)) { const dt = new Date(p); return String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear(); }
+        return input;
+    }
 
+    let tableHTML = `
         <p class="mb-4 text-gray-700">
             <strong>Package Name:</strong> ${packageName}
         </p>
-
         <table class="w-full border-collapse mb-6">
-
             <thead>
-
                 <tr class="bg-blue-600 text-white">
                     <th class="p-3 text-left">Tour</th>
                     <th class="p-3 text-left">Date</th>
                     <th class="p-3 text-left">Amount</th>
                 </tr>
-
             </thead>
-
             <tbody>
     `;
 
     for (let i = 0; i < dates.length; i++) {
-
         const amount = parseFloat(amounts[i].value) || 0;
-
         totalAmount += amount;
-
+        const fd = formatDateString(dates[i].value);
         tableHTML += `
-
             <tr class="border-b">
                 <td class="p-3">${i + 1}</td>
-                <td class="p-3">${dates[i].value}</td>
+                <td class="p-3">${fd}</td>
                 <td class="p-3">Rs ${amount.toFixed(2)}</td>
             </tr>
         `;
@@ -496,20 +545,14 @@ function generateInvoice() {
     let dueAmount = 0;
 
     let paymentHTML = `
-
         <table class="w-full border-collapse">
-
             <thead>
-
                 <tr class="bg-blue-600 text-white">
                     <th class="p-3 text-left">Description</th>
                     <th class="p-3 text-left">Amount</th>
                 </tr>
-
             </thead>
-
             <tbody>
-
                 <tr class="border-b">
                     <td class="p-3">Total Package Amount</td>
                     <td class="p-3">Rs ${totalAmount.toFixed(2)}</td>
@@ -517,124 +560,187 @@ function generateInvoice() {
     `;
 
     if (tripType === 'new') {
-
-        paymentHTML += `
-
-            <tr class="border-b">
-                <td class="p-3">Advance Amount (30%)</td>
-                <td class="p-3">Rs ${advance.toFixed(2)}</td>
-            </tr>
-        `;
-
+        paymentHTML += `<tr class="border-b"><td class="p-3">Advance Amount (30%)</td><td class="p-3">Rs ${advance.toFixed(2)}</td></tr>`;
         if (newTripPaymentType === 'advance') {
-
-            amountPaid = advance;
-            dueAmount = totalAmount - amountPaid;
-
-            paymentHTML += `
-
-                <tr class="border-b">
-                    <td class="p-3">Amount Paid</td>
-                    <td class="p-3">Rs ${amountPaid.toFixed(2)}</td>
-                </tr>
-
-                <tr class="border-b text-red-600 font-semibold">
-                    <td class="p-3">Due Amount</td>
-                    <td class="p-3">Rs ${dueAmount.toFixed(2)}</td>
-                </tr>
-            `;
+            amountPaid = advance; dueAmount = totalAmount - amountPaid;
+            paymentHTML += `<tr class="border-b"><td class="p-3">Amount Paid</td><td class="p-3">Rs ${amountPaid.toFixed(2)}</td></tr><tr class="border-b text-red-600 font-semibold"><td class="p-3">Due Amount</td><td class="p-3">Rs ${dueAmount.toFixed(2)}</td></tr>`;
         }
-        else {
-
-            amountPaid = totalAmount;
-
-            paymentHTML += `
-
-                <tr class="border-b">
-                    <td class="p-3">Amount Paid</td>
-                    <td class="p-3">Rs ${amountPaid.toFixed(2)}</td>
-                </tr>
-            `;
-        }
+        else { amountPaid = totalAmount; paymentHTML += `<tr class="border-b"><td class="p-3">Amount Paid</td><td class="p-3">Rs ${amountPaid.toFixed(2)}</td></tr>`; }
     }
     else {
-
-        amountPaid = oldPaidAmount;
-
-        dueAmount = totalAmount - amountPaid;
-
-        if (dueAmount < 0) {
-            dueAmount = 0;
-        }
-
-        paymentHTML += `
-
-            <tr class="border-b">
-                <td class="p-3">Amount Paid</td>
-                <td class="p-3">Rs ${amountPaid.toFixed(2)}</td>
-            </tr>
-        `;
-
-        if (dueAmount > 0) {
-
-            paymentHTML += `
-
-                <tr class="border-b text-red-600 font-semibold">
-                    <td class="p-3">Due Amount</td>
-                    <td class="p-3">Rs ${dueAmount.toFixed(2)}</td>
-                </tr>
-            `;
-        }
+        amountPaid = oldPaidAmount; dueAmount = totalAmount - amountPaid; if (dueAmount < 0) dueAmount = 0;
+        paymentHTML += `<tr class="border-b"><td class="p-3">Amount Paid</td><td class="p-3">Rs ${amountPaid.toFixed(2)}</td></tr>`;
+        if (dueAmount > 0) paymentHTML += `<tr class="border-b text-red-600 font-semibold"><td class="p-3">Due Amount</td><td class="p-3">Rs ${dueAmount.toFixed(2)}</td></tr>`;
     }
 
     paymentHTML += `</tbody></table>`;
 
-    document.getElementById('customerPreview').innerHTML = `
-
-        <p><strong>Name:</strong> ${customerName}</p>
-        <p><strong>Phone:</strong> ${phone}</p>
-        <p><strong>Number Of Customers:</strong> ${customers}</p>
-    `;
-
+    document.getElementById('customerPreview').innerHTML = `<p><strong>Name:</strong> ${customerName}</p><p><strong>Phone:</strong> ${phone}</p><p><strong>Number Of Customers:</strong> ${customers}</p>`;
     document.getElementById('packagePreview').innerHTML = tableHTML;
-
     document.getElementById('paymentPreview').innerHTML = paymentHTML;
-
     document.getElementById('remarksPreview').innerHTML = remarks || 'No Remarks';
 
-    saveInvoiceHistory({
-        invoice: `PYB/2026/${invoiceCounter}`,
-        customerName,
-        phone,
-        packageName,
-        totalAmount,
-        remarks,
-        date: new Date().toLocaleString()
-    });
+    // Determine invoice number (only when saving). Use DB for authoritative numbering.
+    let assignedInvoiceNumber = `PYB/2026/${String(invoiceCounter).padStart(4,'0')}`;
 
-    invoiceCounter++;
+    if (options.save) {
+        try {
+            if (window.electronAPI && window.electronAPI.getNextInvoiceNumber) {
+                const nextNum = await window.electronAPI.getNextInvoiceNumber();
+                if (Number.isInteger(nextNum)) { invoiceCounter = nextNum; localStorage.setItem('invoiceCounter', invoiceCounter); }
+            }
 
-    localStorage.setItem('invoiceCounter', invoiceCounter);
+            assignedInvoiceNumber = `PYB/2026/${String(invoiceCounter).padStart(4,'0')}`;
 
-    document.getElementById('invoiceNumber').innerHTML = `
-        Invoice No: PYB/2026/${invoiceCounter}
-    `;
+            const payload = {
+                invoiceNumber: assignedInvoiceNumber,
+                customerName,
+                phone,
+                packageName,
+                totalAmount,
+                amountPaid: amountPaid || 0,
+                dueAmount: dueAmount || 0,
+                remarks: remarks || ''
+            };
+
+            await saveInvoiceHistory(payload);
+
+            // After successful save, increment local counter for next invoice
+            invoiceCounter++;
+            localStorage.setItem('invoiceCounter', invoiceCounter);
+        }
+        catch (err) {
+            console.error('Failed to save invoice', err);
+            alert('Failed to save invoice: ' + (err.message || err));
+        }
+    }
+
+    document.getElementById('invoiceNumber').innerHTML = `\n        Invoice No: ${assignedInvoiceNumber}\n    `;
+
+    return assignedInvoiceNumber;
 }
 
-function saveInvoiceHistory(data) {
+async function saveInvoiceHistory(data) {
+    // Save to DB if available
+    if (window.electronAPI && window.electronAPI.saveInvoice) {
+        try {
+            await window.electronAPI.saveInvoice(data);
 
-    let history = JSON.parse(localStorage.getItem('invoiceHistory')) || [];
+            // If saved to DB successfully, remove any duplicate entry in localStorage with same invoice
+            const local = JSON.parse(localStorage.getItem('invoiceHistory')) || [];
+            const filtered = local.filter(item => item.invoice !== data.invoiceNumber && item.invoice !== data.invoice);
+            localStorage.setItem('invoiceHistory', JSON.stringify(filtered));
+        }
+        catch (e) {
+            console.error('saveInvoice failed', e);
+            // fall through to storing in localStorage as fallback
+        }
+    }
 
-    history.unshift(data);
+    // Always add to localStorage fallback to keep non-electron usage working
+    try {
+        const entry = {
+            invoice: data.invoiceNumber || data.invoice,
+            customerName: data.customerName,
+            phone: data.phone,
+            packageName: data.packageName,
+            totalAmount: data.totalAmount,
+            remarks: data.remarks,
+            date: new Date().toLocaleString()
+        };
 
-    localStorage.setItem('invoiceHistory', JSON.stringify(history));
+        let history = JSON.parse(localStorage.getItem('invoiceHistory')) || [];
+        history.unshift(entry);
+        localStorage.setItem('invoiceHistory', JSON.stringify(history));
+    }
+    catch (e) {
+        console.error('localStorage save failed', e);
+    }
 
-    loadInvoiceHistory();
+    // Refresh the UI
+    await loadInvoiceHistory();
 }
 
 function loadInvoiceHistory() {
 
     const container = document.getElementById('historyContainer');
+
+    // If running inside the Electron app with a DB bridge, prefer DB-backed history.
+    if (window.electronAPI && window.electronAPI.loadInvoices) {
+
+        window.electronAPI.loadInvoices().then(rows => {
+
+            if (!rows || rows.length === 0) {
+
+                container.innerHTML = `
+                    <p class="text-gray-500 text-sm">
+                        No saved invoices yet.
+                    </p>
+                `;
+
+                return;
+            }
+
+            container.innerHTML = '';
+
+            rows.forEach(row => {
+
+                const card = document.createElement('div');
+
+                card.className = 'bg-white rounded-2xl p-4 shadow-md border border-gray-200';
+
+                card.innerHTML = `
+
+                    <div class="space-y-2">
+
+                        <div class="flex justify-between items-center">
+
+                            <h3 class="font-bold text-blue-600">
+                                ${row.invoiceNumber}
+                            </h3>
+
+                            <span class="text-xs text-gray-500">
+                                ${row.createdAt}
+                            </span>
+
+                        </div>
+
+                        <p class="text-sm text-gray-700">
+                            <strong>Name:</strong> ${row.customerName}
+                        </p>
+
+                        <p class="text-sm text-gray-700">
+                            <strong>Phone:</strong> ${row.phone}
+                        </p>
+
+                        <p class="text-sm text-gray-700">
+                            <strong>Package:</strong> ${row.packageName}
+                        </p>
+
+                        <p class="text-sm text-gray-700">
+                            <strong>Total:</strong> Rs ${parseFloat(row.totalAmount).toFixed(2)}
+                        </p>
+
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+        }).catch(err => {
+            console.error('loadInvoices failed', err);
+            // fallback to localStorage below
+            renderLocalHistory(container);
+        });
+
+        return;
+    }
+
+    // Fallback rendering from localStorage for non-Electron contexts.
+    renderLocalHistory(container);
+}
+
+function renderLocalHistory(container) {
 
     let history = JSON.parse(localStorage.getItem('invoiceHistory')) || [];
 
@@ -697,20 +803,40 @@ function loadInvoiceHistory() {
 }
 
 function clearHistory() {
+    if (!confirm('Delete all invoice history? This will remove records from local storage and the local database.')) return;
 
-    if (confirm('Delete all invoice history?')) {
+    // Clear DB first (if available), then localStorage fallback
+    (async () => {
+        try {
+            if (window.electronAPI && window.electronAPI.clearInvoices) {
+                const res = await window.electronAPI.clearInvoices();
+                console.log('Cleared invoices from DB', res);
+            }
 
-        localStorage.removeItem('invoiceHistory');
+            // Clear localStorage fallback
+            localStorage.removeItem('invoiceHistory');
+            // Reset invoice counter to a sensible default (next available will be computed from DB on next load)
+            localStorage.removeItem('invoiceCounter');
 
-        loadInvoiceHistory();
-    }
+            alert('Invoice history cleared successfully.');
+        }
+        catch (err) {
+            console.error('Failed to clear history', err);
+            alert('Failed to clear history: ' + (err.message || err));
+        }
+        finally {
+            await initInvoiceCounter();
+            loadInvoiceHistory();
+        }
+    })();
 }
 
 loadInvoiceHistory();
 
 async function downloadPDF() {
 
-    generateInvoice();
+    // Render preview but do not save a new invoice when generating PDF
+    await generateInvoice({ save: false });
 
     const element = document.getElementById('invoiceContent');
 
@@ -754,21 +880,29 @@ async function downloadPDF() {
         .set(options)
         .from(element);
 
-    const pdfBlob = await worker.outputPdf('blob');
+    try {
+        const pdfBlob = await worker.outputPdf('blob');
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
 
-    const arrayBuffer = await pdfBlob.arrayBuffer();
-
-    const uint8Array = new Uint8Array(arrayBuffer);
-
-    await window.electronAPI.savePDF(uint8Array);
-
-    element.style.width = originalWidth;
-    element.style.minHeight = originalMinHeight;
-    element.style.margin = originalMargin;
-    element.style.padding = originalPadding;
-    element.style.boxShadow = originalBoxShadow;
-
-    alert('PDF Saved Successfully');
+        if (window.electronAPI && window.electronAPI.savePDF) {
+            await window.electronAPI.savePDF(uint8Array);
+            alert('PDF Saved Successfully');
+        } else {
+            alert('PDF generated but save API is unavailable.');
+        }
+    }
+    catch (err) {
+        console.error('PDF generation/saving failed', err);
+        alert('Failed to generate or save PDF: ' + (err.message || err));
+    }
+    finally {
+        element.style.width = originalWidth;
+        element.style.minHeight = originalMinHeight;
+        element.style.margin = originalMargin;
+        element.style.padding = originalPadding;
+        element.style.boxShadow = originalBoxShadow;
+    }
 }
 
 </script>
