@@ -11,6 +11,9 @@
     "electron": "^30.0.0",
     "electron-builder": "^24.13.3"
   },
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  },
   "build": {
     "appId": "com.packyourbags.invoice",
     "productName": "Pack Your Bags",
