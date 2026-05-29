@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Pack Your Bags Tours And Travels</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f3f4f6;
+        }
+
+        .glass {
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(10px);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0px);
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        tr, td, th {
+            page-break-inside: avoid;
+        }
+
+        @media print {
+
+            body {
+                background: white !important;
+            }
+
+            #invoiceContent {
+                width: 100% !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 20px !important;
+            }
+
+            button {
+                display: none !important;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="min-h-screen p-6 lg:p-10">
+
+    <div class="max-w-7xl mx-auto">
+
+        <!-- LEFT PANEL -->
+
+        <div class="glass rounded-3xl shadow-2xl p-8 fade-in">
+
+            <div class="text-center mb-8">
+
+                <img src="logo.png" class="mx-auto w-40 mb-4" alt="Logo">
+
+                <h1 class="text-3xl font-bold text-blue-600">
+                    PACK YOUR BAGS TOURS AND TRAVELS
+                </h1>
+
+                <p class="text-gray-600 mt-3 leading-7">
+                    Contact: +91 7679645620<br>
+                    Email: packyourbagstoursandtravelssik@gmail.com<br>
+                    Yangthang, Geyzing District,<br>
+                    Pin-737111, Sikkim
+                </p>
+
+            </div>
+
+            <!-- CUSTOMER DETAILS -->
+
+            <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                    Customer Details
+                </h2>
+
+                <div class="space-y-4">
+
+                    <input id="customerName"
+                           type="text"
+                           placeholder="Customer Name"
+                           class="w-full p-3 rounded-xl border border-gray-300">
+
+                    <input id="phone"
+                           type="text"
+                           placeholder="Phone Number"
+                           class="w-full p-3 rounded-xl border border-gray-300">
+
+                    <input id="customers"
+                           type="number"
+                           placeholder="Number Of Customers"
+                           class="w-full p-3 rounded-xl border border-gray-300">
+
+                    <input id="packageName"
+                           type="text"
+                           placeholder="Package Name"
+                           class="w-full p-3 rounded-xl border border-gray-300">
+
+                </div>
+
+            </div>
+
+            <!-- TOUR DETAILS -->
+
+            <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+
+                <div class="flex justify-between items-center mb-4">
+
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        Tour Details
+                    </h2>
+
+                    <button onclick="addTourRow()"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl">
+                        + Add Tour
+                    </button>
+
+                </div>
+
+                <div class="overflow-x-auto">
+
+                    <table>
+
+                        <thead>
+
+                        <tr class="bg-blue-600 text-white">
+                            <th class="p-3 text-left">Date</th>
+                            <th class="p-3 text-left">Amount</th>
+                        </tr>
+
+                        </thead>
+
+                        <tbody id="tourTable"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            <!-- PAYMENT -->
+
+            <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                    Payment Details
+                </h2>
+
+                <div class="space-y-4">
+
+                    <select id="tripType"
+                            onchange="togglePaymentOptions()"
+                            class="w-full p-3 rounded-xl border border-gray-300">
+
+                        <option value="new">New Trip Booking</option>
+                        <option value="old">Existing / Old Trip</option>
+
+                    </select>
+
+                    <div id="newTripOptions">
+
+                        <select id="newTripPaymentType"
+                                class="w-full p-3 rounded-xl border border-gray-300">
+
+                            <option value="advance">Advance Payment Only</option>
+                            <option value="full">Full Payment Received</option>
+
+                        </select>
+
+                    </div>
+
+                    <div id="oldTripOptions" class="hidden">
+
+                        <input id="oldPaidAmount"
+                               type="number"
+                               placeholder="Amount Already Paid"
+                               class="w-full p-3 rounded-xl border border-gray-300">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- REMARKS -->
+
+            <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                    Remarks
+                </h2>
+
+                <textarea id="remarks"
+                          rows="4"
+                          placeholder="Remarks"
+                          class="w-full p-4 rounded-xl border border-gray-300"></textarea>
+
+            </div>
+
+            <!-- BUTTONS -->
+
+            <div class="flex gap-4">
+
+                <button onclick="generateInvoice()"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl text-lg font-semibold">
+                    Generate Invoice
+                </button>
+
+                <button onclick="downloadPDF()"
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl text-lg font-semibold">
+                    Download PDF
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT PANEL -->
+
+        <div class="invoice-preview rounded-3xl shadow-2xl p-8 fade-in overflow-auto bg-white">
+
+            <div id="invoiceContent"
+                 style="
+                    width: 210mm;
+                    min-height: 297mm;
+                    background: white;
+                    padding: 20mm;
+                    margin: 0 auto;
+                    box-sizing: border-box;
+                    position: relative;
+                 ">
+
+                <div class="text-center mb-8">
+
+                    <img src="logo.png" class="mx-auto w-40 mb-4" alt="Logo">
+
+                    <h1 class="text-3xl font-bold text-blue-600">
+                        PACK YOUR BAGS TOURS AND TRAVELS
+                    </h1>
+
+                    <p class="text-gray-600 mt-3 leading-7">
+                        Contact: +91 7679645620<br>
+                        Email: packyourbagstoursandtravelssik@gmail.com<br>
+                        Yangthang, Geyzing District,<br>
+                        Pin-737111, Sikkim
+                    </p>
+
+                </div>
+
+                <div class="text-right font-semibold text-gray-700 mb-6" id="invoiceNumber">
+                    Invoice No: PYB/2026/0407
+                </div>
+
+                <div class="border-b pb-3 mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">
+                        Customer Details
+                    </h2>
+                </div>
+
+                <div id="customerPreview" class="space-y-2 text-gray-700 mb-8">
+                    Fill details to generate invoice preview.
+                </div>
+
+                <div class="border-b pb-3 mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">
+                        Package Details
+                    </h2>
+                </div>
+
+                <div id="packagePreview" class="mb-8"></div>
+
+                <div class="border-b pb-3 mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">
+                        Payment Details
+                    </h2>
+                </div>
+
+                <div id="paymentPreview"></div>
+
+                <div class="border-b pb-3 mb-4 mt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800">
+                        Remarks
+                    </h2>
+                </div>
+
+                <div id="remarksPreview" class="text-gray-700 leading-7"></div>
+
+                <div class="text-center mt-12 text-gray-500">
+
+                    <h3 class="text-xl font-semibold mb-2">
+                        Thank You For Choosing Us!
+                    </h3>
+
+                    <p>
+                        We Wish You A Safe And Happy Journey.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+</div>
+
+<div class="mt-8">
+        <!-- HISTORY PANEL -->
+
+        <div class="glass rounded-3xl shadow-2xl p-6 fade-in">
+
+            <div class="flex justify-between items-center mb-6">
+
+                <h2 class="text-2xl font-bold text-gray-800">
+                    Invoice History
+                </h2>
+
+                <button onclick="clearHistory()"
+                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm">
+                    Clear
+                </button>
+
+            </div>
+
+            <div id="historyContainer" class="space-y-4 max-h-[800px] overflow-y-auto">
+
+                <p class="text-gray-500 text-sm">
+                    No saved invoices yet.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+<script>
+
+let invoiceCounter = parseInt(localStorage.getItem('invoiceCounter')) || 407;
+
+function addTourRow(date = '', amount = '') {
+
+    const table = document.getElementById('tourTable');
+
+    const row = document.createElement('tr');
+
+    row.className = 'border-b';
+
+    row.innerHTML = `
+
+        <td class="p-3">
+            <input type="text"
+                   value="${date}"
+                   placeholder="Tour Date"
+                   class="tour-date w-full p-3 rounded-xl border border-gray-300">
+        </td>
+
+        <td class="p-3">
+
+            <div class="flex gap-2">
+
+                <input type="number"
+                       value="${amount}"
+                       placeholder="Amount"
+                       class="tour-amount w-full p-3 rounded-xl border border-gray-300">
+
+                <button onclick="this.closest('tr').remove()"
+                        class="bg-red-500 hover:bg-red-600 text-white px-4 rounded-xl">
+                    X
+                </button>
+
+            </div>
+
+        </td>
+    `;
+
+    table.appendChild(row);
+}
+
+addTourRow();
+
+function togglePaymentOptions() {
+
+    const type = document.getElementById('tripType').value;
+
+    const newTrip = document.getElementById('newTripOptions');
+    const oldTrip = document.getElementById('oldTripOptions');
+
+    if (type === 'new') {
+
+        newTrip.classList.remove('hidden');
+        oldTrip.classList.add('hidden');
+    }
+    else {
+
+        newTrip.classList.add('hidden');
+        oldTrip.classList.remove('hidden');
+    }
+}
+
+function generateInvoice() {
+
+    const customerName = document.getElementById('customerName').value;
+    const phone = document.getElementById('phone').value;
+    const customers = document.getElementById('customers').value;
+    const packageName = document.getElementById('packageName').value;
+    const remarks = document.getElementById('remarks').value;
+
+    const tripType = document.getElementById('tripType').value;
+    const newTripPaymentType = document.getElementById('newTripPaymentType').value;
+    const oldPaidAmount = parseFloat(document.getElementById('oldPaidAmount').value) || 0;
+
+    const dates = document.querySelectorAll('.tour-date');
+    const amounts = document.querySelectorAll('.tour-amount');
+
+    let totalAmount = 0;
+
+    let tableHTML = `
+
+        <p class="mb-4 text-gray-700">
+            <strong>Package Name:</strong> ${packageName}
+        </p>
+
+        <table class="w-full border-collapse mb-6">
+
+            <thead>
+
+                <tr class="bg-blue-600 text-white">
+                    <th class="p-3 text-left">Tour</th>
+                    <th class="p-3 text-left">Date</th>
+                    <th class="p-3 text-left">Amount</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+    `;
+
+    for (let i = 0; i < dates.length; i++) {
+
+        const amount = parseFloat(amounts[i].value) || 0;
+
+        totalAmount += amount;
+
+        tableHTML += `
+
+            <tr class="border-b">
+                <td class="p-3">${i + 1}</td>
+                <td class="p-3">${dates[i].value}</td>
+                <td class="p-3">Rs ${amount.toFixed(2)}</td>
+            </tr>
+        `;
+    }
+
+    tableHTML += `</tbody></table>`;
+
+    let advance = totalAmount * 0.30;
+    let amountPaid = 0;
+    let dueAmount = 0;
+
+    let paymentHTML = `
+
+        <table class="w-full border-collapse">
+
+            <thead>
+
+                <tr class="bg-blue-600 text-white">
+                    <th class="p-3 text-left">Description</th>
+                    <th class="p-3 text-left">Amount</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                <tr class="border-b">
+                    <td class="p-3">Total Package Amount</td>
+                    <td class="p-3">Rs ${totalAmount.toFixed(2)}</td>
+                </tr>
+    `;
+
+    if (tripType === 'new') {
+
+        paymentHTML += `
+
+            <tr class="border-b">
+                <td class="p-3">Advance Amount (30%)</td>
+                <td class="p-3">Rs ${advance.toFixed(2)}</td>
+            </tr>
+        `;
+
+        if (newTripPaymentType === 'advance') {
+
+            amountPaid = advance;
+            dueAmount = totalAmount - amountPaid;
+
+            paymentHTML += `
+
+                <tr class="border-b">
+                    <td class="p-3">Amount Paid</td>
+                    <td class="p-3">Rs ${amountPaid.toFixed(2)}</td>
+                </tr>
+
+                <tr class="border-b text-red-600 font-semibold">
+                    <td class="p-3">Due Amount</td>
+                    <td class="p-3">Rs ${dueAmount.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+        else {
+
+            amountPaid = totalAmount;
+
+            paymentHTML += `
+
+                <tr class="border-b">
+                    <td class="p-3">Amount Paid</td>
+                    <td class="p-3">Rs ${amountPaid.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+    }
+    else {
+
+        amountPaid = oldPaidAmount;
+
+        dueAmount = totalAmount - amountPaid;
+
+        if (dueAmount < 0) {
+            dueAmount = 0;
+        }
+
+        paymentHTML += `
+
+            <tr class="border-b">
+                <td class="p-3">Amount Paid</td>
+                <td class="p-3">Rs ${amountPaid.toFixed(2)}</td>
+            </tr>
+        `;
+
+        if (dueAmount > 0) {
+
+            paymentHTML += `
+
+                <tr class="border-b text-red-600 font-semibold">
+                    <td class="p-3">Due Amount</td>
+                    <td class="p-3">Rs ${dueAmount.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+    }
+
+    paymentHTML += `</tbody></table>`;
+
+    document.getElementById('customerPreview').innerHTML = `
+
+        <p><strong>Name:</strong> ${customerName}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
+        <p><strong>Number Of Customers:</strong> ${customers}</p>
+    `;
+
+    document.getElementById('packagePreview').innerHTML = tableHTML;
+
+    document.getElementById('paymentPreview').innerHTML = paymentHTML;
+
+    document.getElementById('remarksPreview').innerHTML = remarks || 'No Remarks';
+
+    saveInvoiceHistory({
+        invoice: `PYB/2026/${invoiceCounter}`,
+        customerName,
+        phone,
+        packageName,
+        totalAmount,
+        remarks,
+        date: new Date().toLocaleString()
+    });
+
+    invoiceCounter++;
+
+    localStorage.setItem('invoiceCounter', invoiceCounter);
+
+    document.getElementById('invoiceNumber').innerHTML = `
+        Invoice No: PYB/2026/${invoiceCounter}
+    `;
+}
+
+function saveInvoiceHistory(data) {
+
+    let history = JSON.parse(localStorage.getItem('invoiceHistory')) || [];
+
+    history.unshift(data);
+
+    localStorage.setItem('invoiceHistory', JSON.stringify(history));
+
+    loadInvoiceHistory();
+}
+
+function loadInvoiceHistory() {
+
+    const container = document.getElementById('historyContainer');
+
+    let history = JSON.parse(localStorage.getItem('invoiceHistory')) || [];
+
+    if (history.length === 0) {
+
+        container.innerHTML = `
+            <p class="text-gray-500 text-sm">
+                No saved invoices yet.
+            </p>
+        `;
+
+        return;
+    }
+
+    container.innerHTML = '';
+
+    history.forEach((item) => {
+
+        const card = document.createElement('div');
+
+        card.className = 'bg-white rounded-2xl p-4 shadow-md border border-gray-200';
+
+        card.innerHTML = `
+
+            <div class="space-y-2">
+
+                <div class="flex justify-between items-center">
+
+                    <h3 class="font-bold text-blue-600">
+                        ${item.invoice}
+                    </h3>
+
+                    <span class="text-xs text-gray-500">
+                        ${item.date}
+                    </span>
+
+                </div>
+
+                <p class="text-sm text-gray-700">
+                    <strong>Name:</strong> ${item.customerName}
+                </p>
+
+                <p class="text-sm text-gray-700">
+                    <strong>Phone:</strong> ${item.phone}
+                </p>
+
+                <p class="text-sm text-gray-700">
+                    <strong>Package:</strong> ${item.packageName}
+                </p>
+
+                <p class="text-sm text-gray-700">
+                    <strong>Total:</strong> Rs ${item.totalAmount.toFixed(2)}
+                </p>
+
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+function clearHistory() {
+
+    if (confirm('Delete all invoice history?')) {
+
+        localStorage.removeItem('invoiceHistory');
+
+        loadInvoiceHistory();
+    }
+}
+
+loadInvoiceHistory();
+
+async function downloadPDF() {
+
+    generateInvoice();
+
+    const element = document.getElementById('invoiceContent');
+
+    const originalWidth = element.style.width;
+    const originalMinHeight = element.style.minHeight;
+    const originalMargin = element.style.margin;
+    const originalPadding = element.style.padding;
+    const originalBoxShadow = element.style.boxShadow;
+
+    element.style.width = '210mm';
+    element.style.minHeight = '297mm';
+    element.style.margin = '0';
+    element.style.padding = '20mm';
+    element.style.boxShadow = 'none';
+
+    const options = {
+
+        margin: 0,
+
+        filename: 'invoice.pdf',
+
+        image: {
+            type: 'jpeg',
+            quality: 1
+        },
+
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            scrollY: 0
+        },
+
+        jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        }
+    };
+
+    const worker = html2pdf()
+        .set(options)
+        .from(element);
+
+    const pdfBlob = await worker.outputPdf('blob');
+
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    await window.electronAPI.savePDF(uint8Array);
+
+    element.style.width = originalWidth;
+    element.style.minHeight = originalMinHeight;
+    element.style.margin = originalMargin;
+    element.style.padding = originalPadding;
+    element.style.boxShadow = originalBoxShadow;
+
+    alert('PDF Saved Successfully');
+}
+
+</script>
+
+</body>
+</html>
