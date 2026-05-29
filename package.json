@@ -1,0 +1,22 @@
+{
+  "name": "pack-your-bags",
+  "version": "1.0.2",
+  "description": "Travel Invoice Generator",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.packyourbags.invoice",
+    "productName": "Pack Your Bags",
+    "win": {
+      "target": "nsis",
+      "icon": "logo.png"
+    }
+  }
+}
